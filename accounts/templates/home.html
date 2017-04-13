@@ -1,0 +1,17 @@
+{% extends 'login-signup-base.html' %}
+{% block content %}
+    <div class="login-box">
+        <div class="login-logo">
+            <a href="/">Welcome to <b>Example</b> Website</a>
+        </div>
+        <!-- /.login-logo -->
+        <div class="login-box-body">
+            <div class="social-auth-links text-center">
+                <a href="{% url 'user-login' %}" class="btn btn-block btn-social btn-primary btn-flat"><i class="fa fa-user"></i> Sign in </a>
+                <p> OR </p>
+                <a href="{% url 'user-signup' %}" class="btn btn-block btn-social btn-success btn-flat"><i class="fa fa-user-plus"></i> Sign up</a>
+            </div>
+        </div>
+        <!-- /.login-box-body -->
+    </div>
+{% endblock %}

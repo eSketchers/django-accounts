@@ -1,0 +1,68 @@
+<!-- Profile Image -->
+<div class="box box-primary">
+    <div class="box-body box-profile">
+        <img class="profile-user-img img-responsive img-circle" src="{{ user.avatar }}" alt="{{ user.name }} profile picture">
+
+        <h3 class="profile-username text-center">{{ user.name }}</h3>
+        {% if user.designation %}
+            <p class="text-muted text-center text-capitalize">{{ user.designation }}</p>
+        {% endif %}
+        <ul class="list-group list-group-unbordered">
+            <li class="list-group-item">
+                <b>Followers</b> <a class="pull-right">{{ user.total_followers }}</a>
+            </li>
+            <li class="list-group-item">
+                <b>Following</b> <a class="pull-right">{{ user.total_followings }}</a>
+            </li>
+            <li class="list-group-item">
+                <b>Friends</b> <a class="pull-right">{{ user.total_friends }}</a>
+            </li>
+        </ul>
+        {% if not request.user.is_authenticated or request.user.id != user.id %}
+            <div class="row">
+                <div class="col-xs-6">
+                    <form method="post" action="{% if not is_follower %}{% url 'follow-user' %}{% else %}{% url 'unfollow-user' followed_to=user.pk %}{% endif %}">
+                        {% csrf_token %}
+                        <input type="hidden" name="followed_to" value="{{ user.id }}">
+                        <button type="submit" class="btn btn-primary btn-block"><b>{% if not is_follower %}Follow{% else %}Unfollow{% endif %}</b></button>
+                    </form>
+                </div>
+                <div class="col-xs-6">
+                    <a href="#" class="btn btn-primary btn-block"><b>Add Friend</b></a>
+                </div>
+            </div>
+        {% endif %}
+    </div>
+    <!-- /.box-body -->
+</div>
+<!-- /.box -->
+
+<!-- About Me Box -->
+<div class="box box-primary">
+    <div class="box-header with-border">
+        <h3 class="box-title">About Me</h3>
+    </div>
+    <!-- /.box-header -->
+    <div class="box-body">
+        {% if user.about_me %}<p class="text-justify">{{ user.about_me }}</p><hr/>{% endif %}
+        <strong><i class="fa fa-pencil margin-r-5"></i> Skills</strong>
+        <p>
+            <span class="label label-danger">UI Design</span>
+            <span class="label label-success">Coding</span>
+            <span class="label label-info">Javascript</span>
+            <span class="label label-warning">PHP</span>
+            <span class="label label-primary">Node.js</span>
+        </p><hr/>
+
+        {% if user.education %}
+            <strong><i class="fa fa-book margin-r-5"></i> Education</strong>
+            <p class="text-muted text-justify">{{ user.education }}</p><hr>
+        {% endif %}
+        {% if user.location %}
+            <strong><i class="fa fa-map-marker margin-r-5"></i> Location</strong>
+            <p class="text-muted text-justify">{{ user.location }}</p><hr>
+        {% endif %}
+    </div>
+    <!-- /.box-body -->
+</div>
+<!-- /.box -->

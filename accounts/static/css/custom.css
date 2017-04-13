@@ -1,0 +1,12 @@
+.errorlist{
+    list-style:none;
+    padding: 0;
+}
+
+.widget-user-image > img.img-height{
+    height: 90px;
+}
+
+.profile-user-img{
+    height: 100px !important;
+}
