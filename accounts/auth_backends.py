@@ -2,11 +2,13 @@ from django.contrib.auth.backends import ModelBackend
 from account.auth_backends import EmailAuthenticationBackend, UsernameAuthenticationBackend
 
 
-class EmailUserNameAUthenticationBackend(ModelBackend):
+class EmailUserNameAuthenticationBackend(ModelBackend):
 
-    def authenticate(self, email_username=None, password=None, **kwargs):
-        user = EmailAuthenticationBackend.authenticate(email=email_username, password=password)
+    def authenticate(self, username=None, password=None, **kwargs):
+        backend = EmailAuthenticationBackend()
+        user = backend.authenticate(email=username, password=password)
         if not user:
-            user = UsernameAuthenticationBackend.authenticate(username=email_username, password=password)
+            backend = UsernameAuthenticationBackend()
+            user = backend.authenticate(username=username, password=password)
 
         return user

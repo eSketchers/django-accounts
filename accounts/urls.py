@@ -12,6 +12,6 @@ urlpatterns = [
     url(r"^confirm_email/(?P<key>\w+)/$", views.EmailConfirmationView.as_view(), name="confirm-email"),
     url(r'^profile/(?P<username>\w+)$', views.ProfileView.as_view(), name='user-profile'),
     url(r'^profile/update/$', views.EditProfileView.as_view(), name='user-profile-update'),
-    url(r'^api/v1', include('accounts.api.v1.api_urls')),
+    url(r'^api/v1', include('django-accounts.accounts.api.v1.api_urls')),
     url(r'^account/', include('account.urls'))
 ]

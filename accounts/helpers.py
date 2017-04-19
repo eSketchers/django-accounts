@@ -25,11 +25,11 @@ def is_follower(user, follower):
     return False
 
 
-def get_user_serializer_response(login_user, message=None, is_new=False):
+def get_user_serializer_response(login_user, message=None, is_new=False, response_serializer=None):
     response_status = status.HTTP_200_OK
     response = {}
     if login_user.is_active:
-        serializer = UserSerializer(login_user)
+        serializer = response_serializer(login_user)
         token, created = Token.objects.get_or_create(user=login_user)
         response.update({'user': serializer.data, 'success': True, 'token': token.key})
         if is_new:

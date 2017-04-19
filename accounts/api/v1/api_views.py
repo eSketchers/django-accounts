@@ -24,6 +24,7 @@ class LoginAPIView(APIView):
     throttle_classes = (AnonRateThrottle,)
     default_error_message = settings.ACCOUNTS_INVALID_LOGIN_MESSAGE
     inactive_user_message = settings.ACCOUNTS_INACTIVE_USER_MESSAGE
+    response_serializer = serializers.UserSerializer
     http_method_names = ['post', ]
 
     def post(self, request, format=None):
@@ -34,7 +35,7 @@ class LoginAPIView(APIView):
                 return Response({'errors': {}, 'message': self.default_error_message, 'success': False},
                                 status=status.HTTP_200_OK)
             else:
-                return helpers.get_user_serializer_response(login_user, self.inactive_user_message)
+                return helpers.get_user_serializer_response(login_user=login_user, message=self.inactive_user_message, response_serializer=self.response_serializer)
         return Response({'success': False, 'errors': serializer.errors, 'message': ''}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -42,6 +43,7 @@ class SignupAPIView(CreateAPIView):
     serializer_class = serializers.SignupSerializer
     throttle_classes = (AnonRateThrottle, )
     permission_classes = (AllowAny, )
+    response_serializer = serializers.UserSerializer
     http_method_names = ['post', ]
     model = User
 
@@ -74,7 +76,7 @@ class SignupAPIView(CreateAPIView):
             else:
                 user.is_active = True
             user.save()
-        return helpers.get_user_serializer_response(user, settings.ACCOUNTS_ACTIVE_USER_MESSAGE, True)
+        return helpers.get_user_serializer_response(login_user=user, message=settings.ACCOUNTS_ACTIVE_USER_MESSAGE, is_new=True, response_serializer=self.response_serializer)
 
 
 class ChangePasswordAPIView(APIView):
@@ -178,6 +180,7 @@ class VerifyCodeAPIView(APIView):
 
 class SocialAuthAPIView(CreateAPIView):
     serializer_class = serializers.SocialLoginSerializer
+    response_serializer = serializers.UserSerializer
     permission_classes = (AllowAny,)
     throttle_classes = (AnonRateThrottle, )
     http_method_names = ['post', ]
@@ -246,7 +249,7 @@ class SocialAuthAPIView(CreateAPIView):
 
             # Set instance since we are not calling `serializer.save()`
             serializer.instance = user
-            return helpers.get_user_serializer_response(user, settings.ACCOUNTS_INACTIVE_USER_MESSAGE)
+            return helpers.get_user_serializer_response(login_user=user, message=settings.ACCOUNTS_INACTIVE_USER_MESSAGE, response_serializer=self.response_serializer)
         else:
             return Response({"errors": "Error with social authentication", 'success': False},
                             status=status.HTTP_400_BAD_REQUEST)
