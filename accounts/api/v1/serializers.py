@@ -3,8 +3,8 @@ from rest_framework.fields import empty
 
 from django.contrib.auth import get_user_model
 from django.utils.translation import ugettext_lazy as _
+from django.conf import settings
 
-from ... import accounts_settings
 
 User = get_user_model()
 
@@ -43,7 +43,7 @@ class SignupSerializer(serializers.ModelSerializer):
 
     def validate(self, data):
         if data['password'] != data['password_confirm']:
-            raise serializers.ValidationError(accounts_settings.PASSWORD_MISMATCH_ERROR_MESSAGE)
+            raise serializers.ValidationError(settings.ACCOUNTS_PASSWORD_MISMATCH_ERROR_MESSAGE)
         return data
 
 
@@ -67,7 +67,7 @@ class ChangePasswordSerializer(serializers.Serializer):
 
     def validate(self, attrs):
         if attrs.get('new_password', None) != attrs.get('new_password_confirm', None):
-            raise serializers.ValidationError(accounts_settings.PASSWORD_MISMATCH_ERROR_MESSAGE)
+            raise serializers.ValidationError(settings.ACCOUNTS_PASSWORD_MISMATCH_ERROR_MESSAGE)
         return attrs
 
 
@@ -98,3 +98,27 @@ class SocialLoginSerializer(serializers.Serializer):
         pass
 
 
+class PasswordResetSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=6, min_length=1, required=False)
+    new_password = serializers.CharField(required=True)
+    new_password_confirm = serializers.CharField(required=True)
+
+    def __init__(self, instance=None, data=empty, **kwargs):
+        if settings.ACCOUNTS_USE_CODE_IN_EMAILS:
+            self.fields['code'].required = True
+        super(PasswordResetSerializer, self).__init__(data=data, **kwargs)
+
+    def validate(self, attrs):
+        if attrs.get('new_password', None) != attrs.get('new_password_confirm', None):
+            raise serializers.ValidationError(settings.ACCOUNTS_PASSWORD_MISMATCH_ERROR_MESSAGE)
+        return attrs
+
+    def create(self, validated_data):
+        pass
+
+    def update(self, instance, validated_data):
+        pass
+
+
+class ConfirmAccountVerificationCodeSerializer(serializers.Serializer):
+    code = serializers.CharField(max_length=6, min_length=1, required=True)

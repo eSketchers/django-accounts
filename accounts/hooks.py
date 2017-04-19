@@ -6,12 +6,12 @@ from django.core.mail import EmailMultiAlternatives
 from django.template.loader import render_to_string
 
 
-class AccountsHookSet(object):
+class AccountsDefaultHookSet(object):
 
     def send_confirmation_email(self, to, ctx):
-        subject = render_to_string("email/email_confirmation_subject.txt", ctx)
+        subject = render_to_string("email/confirmation_email_subject.txt", ctx)
         subject = "".join(subject.splitlines()) # remove superfluous line breaks
-        message = render_to_string("email/email_confirmation_message.html", ctx)
+        message = render_to_string("email/confirmation_email.html", ctx)
         msg = EmailMultiAlternatives(subject, message, settings.DEFAULT_FROM_EMAIL, to)
         msg.attach_alternative(message, "text/html")
         msg.send()
@@ -28,7 +28,7 @@ class AccountsHookSet(object):
     def send_password_reset_email(self, to, ctx):
         subject = render_to_string("email/password_reset_subject.txt", ctx)
         subject = "".join(subject.splitlines())
-        message = render_to_string("email/password_reset.html", ctx)
+        message = render_to_string("email/password_reset_email.html", ctx)
         msg = EmailMultiAlternatives(subject, message, settings.DEFAULT_FROM_EMAIL, to)
         msg.attach_alternative(message, "text/html")
         msg.encoding = 'utf8'
@@ -56,7 +56,8 @@ class AccountsHookSet(object):
 class HookProxy(object):
 
     def __getattr__(self, attr):
-        return getattr(settings.ACCOUNT_HOOKSET, attr)
+        proxy = getattr(settings.ACCOUNT_HOOKSET, attr)
+        return proxy
 
 
 hookset = HookProxy()

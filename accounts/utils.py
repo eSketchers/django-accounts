@@ -1,4 +1,5 @@
 import time
+from random import randint
 
 from django.utils import timezone as dj_datetime
 from django.contrib.auth.tokens import default_token_generator
@@ -15,3 +16,7 @@ def file_upload_to(instance, filename):
 
 def make_token(user):
     return default_token_generator.make_token(user)
+
+
+def generate_random_code():
+    return randint(000000, 999999)

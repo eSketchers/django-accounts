@@ -1,5 +1,6 @@
+from account.utils import default_redirect
 from account.views import SignupView as BaseSignupView, LoginView as BaseSigninView, \
-    LogoutView as BaseLogoutView, PasswordResetView
+    LogoutView as BaseLogoutView, PasswordResetView, PasswordResetTokenView, ConfirmEmailView
 from account.mixins import LoginRequiredMixin
 
 from django.conf import settings
@@ -11,6 +12,8 @@ from django.forms.models import model_to_dict
 
 from .helpers import is_follower
 from .forms import SignupForm, LoginForm, ProfileUpdateForm
+from .models import EmailSMSCode
+from . import constants
 User = get_user_model()
 
 
@@ -19,12 +22,20 @@ class SignupView(BaseSignupView):
 
     template_name = "signup.html"
     form_class = SignupForm
+    fallback_url_setting = "ACCOUNT_SIGNUP_REDIRECT_URL"
+
+    def get(self, *args, **kwargs):
+        if self.request.user.is_authenticated():
+            return redirect(default_redirect(self.request, settings.ACCOUNTS_LOGIN_REDIRECT_URL))
+        if not self.is_open():
+            return self.closed()
+        return super(SignupView, self).get(*args, **kwargs)
 
     def after_signup(self, form):
         super(SignupView, self).after_signup(form)
         self.created_user.first_name = form.cleaned_data.get('first_name', None)
         self.created_user.last_name = form.cleaned_data.get('last_name', None)
-        if not settings.ACCOUNT_EMAIL_CONFIRMATION_EMAIL:
+        if not settings.ACCOUNTS_EMAIL_CONFIRMATION_REQUIRED:
             self.created_user.is_active = True
         self.created_user.save()
 
@@ -114,6 +125,29 @@ class EditProfileView(LoginRequiredMixin, FormView):
 
 class ForgetPasswordView(PasswordResetView):
     pass
+
+
+class ResetPasswordView(PasswordResetTokenView):
+    template_name = 'password_reset_token.html'
+
+
+class EmailConfirmationView(ConfirmEmailView):
+
+    def get(self, *args, **kwargs):
+        return self.post(*args, **kwargs)
+
+    def after_confirmation(self, confirmation):
+        super(EmailConfirmationView, self).after_confirmation(confirmation)
+        if settings.ACCOUNTS_USE_CODE_IN_EMAILS:
+            try:
+                code = EmailSMSCode.objects.get(user=confirmation.email_address.user,
+                                                is_expired=False,
+                                                action=constants.CONFIRMATION_EMAIL,
+                                                is_used=False)
+                code.is_used = True
+                code.save()
+            except:
+                pass
 
 
 class HomePageView(TemplateView):

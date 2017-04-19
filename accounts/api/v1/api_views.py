@@ -8,19 +8,13 @@ from rest_framework.throttling import AnonRateThrottle
 from rest_framework.views import APIView
 
 from django.contrib.auth import authenticate, get_user_model
-from django.conf import settings
-from django.contrib.sites.shortcuts import get_current_site
-from django.urls import reverse
-from django.utils.http import int_to_base36
 from social_core.backends.oauth import BaseOAuth1, BaseOAuth2
 from social_core.exceptions import AuthAlreadyAssociated
 from social_django.utils import load_strategy, load_backend
 
-from ...helpers import get_user_serializer_response
 from . import serializers
-from ... import accounts_settings
-from ...hooks import hookset
-from ...utils import make_token
+from ...conf import settings
+from ... import constants, helpers, models
 
 User = get_user_model()
 
@@ -28,8 +22,8 @@ User = get_user_model()
 class LoginAPIView(APIView):
     permission_classes = (AllowAny,)
     throttle_classes = (AnonRateThrottle,)
-    default_error_message = accounts_settings.DEFAULT_INVALID_LOGIN_MESSAGE
-    inactive_user_message = accounts_settings.INACTIVE_USER_MESSAGE
+    default_error_message = settings.ACCOUNTS_INVALID_LOGIN_MESSAGE
+    inactive_user_message = settings.ACCOUNTS_INACTIVE_USER_MESSAGE
     http_method_names = ['post', ]
 
     def post(self, request, format=None):
@@ -40,7 +34,7 @@ class LoginAPIView(APIView):
                 return Response({'errors': {}, 'message': self.default_error_message, 'success': False},
                                 status=status.HTTP_200_OK)
             else:
-                return get_user_serializer_response(login_user, self.inactive_user_message)
+                return helpers.get_user_serializer_response(login_user, self.inactive_user_message)
         return Response({'success': False, 'errors': serializer.errors, 'message': ''}, status=status.HTTP_400_BAD_REQUEST)
 
 
@@ -54,17 +48,33 @@ class SignupAPIView(CreateAPIView):
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
-        self.perform_create(serializer)
-        return get_user_serializer_response(login_user=serializer.instance, is_new=True)
+        response = self.perform_create(serializer)
+        return response
 
     def perform_create(self, serializer):
         if serializer.validated_data.has_key('password_confirm'):
             del serializer.validated_data['password_confirm']
         super(SignupAPIView, self).perform_create(serializer)
-        user = serializer.instance
-        user.is_active = True
-        user.set_password(serializer.validated_data.get('password'))
-        user.save()
+        self.created_user = serializer.instance
+        return self.after_create(serializer)
+
+    def after_create(self, serializer):
+        if self.created_user:
+            user = serializer.instance
+            user.set_password(serializer.validated_data.get('password'))
+            if settings.ACCOUNT_EMAIL_CONFIRMATION_REQUIRED:
+                user.is_active = False
+            if settings.ACCOUNT_EMAIL_CONFIRMATION_EMAIL:
+                user.save()
+                helpers.send_email(user, constants.CONFIRMATION_EMAIL, self.request)
+                return Response({'success': True,
+                                 'message': settings.ACCOUNTS_CONFIRMATION_EMAIL_MESSAGE,
+                                 'code_verification_enabled': settings.ACCOUNTS_USE_CODE_IN_EMAILS},
+                                status=status.HTTP_200_OK)
+            else:
+                user.is_active = True
+            user.save()
+        return helpers.get_user_serializer_response(user, settings.ACCOUNTS_ACTIVE_USER_MESSAGE, True)
 
 
 class ChangePasswordAPIView(APIView):
@@ -72,9 +82,9 @@ class ChangePasswordAPIView(APIView):
     permission_classes = (IsAuthenticated, )
     http_method_names = ['post', ]
 
-    invalid_password_error_message = accounts_settings.CHANGE_PASSWORD_INVALID_CURRENT_PASSWORD_MESSAGE
-    inactive_user_message = accounts_settings.INACTIVE_USER_MESSAGE
-    success_message = accounts_settings.CHANGE_PASSWORD_SUCCESS_MESSAGE
+    invalid_password_error_message = settings.ACCOUNTS_CHANGE_PASSWORD_INVALID_CURRENT_PASSWORD_MESSAGE
+    inactive_user_message = settings.ACCOUNTS_INACTIVE_USER_MESSAGE
+    success_message = settings.ACCOUNTS_CHANGE_PASSWORD_SUCCESS_MESSAGE
 
     def post(self, request, format=None):
         serializer = serializers.ChangePasswordSerializer(data=request.data)
@@ -89,7 +99,7 @@ class ChangePasswordAPIView(APIView):
                 return Response({'success': False, 'errors': {}, 'message': self.invalid_password_error_message},
                                 status=status.HTTP_400_BAD_REQUEST)
         return Response({'success': False, 'errors': serializer.errors, 'message': ''},
-                            status=status.HTTP_400_BAD_REQUEST)
+                        status=status.HTTP_400_BAD_REQUEST)
 
 
 class ForgotPasswordAPIView(APIView):
@@ -102,28 +112,68 @@ class ForgotPasswordAPIView(APIView):
         if serializer.is_valid():
             self.send_email(serializer.data["email"])
             return Response({'success': True,
-                             'message': 'We have sent you an email for password reset. Please check your email.'},
+                             'message': settings.ACCOUNTS_PASSWORD_RESET_EMAIL_SENT_MESSAGE,
+                             'code_verification_enabled': settings.ACCOUNTS_USE_CODE_IN_EMAILS,
+                             },
                             status=status.HTTP_200_OK)
         return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def send_email(self, email):
-        protocol = getattr(settings, "DEFAULT_HTTP_PROTOCOL", "http")
-        current_site = get_current_site(self.request)
         email_qs = EmailAddress.objects.filter(email__iexact=email)
         for user in User.objects.filter(pk__in=email_qs.values("user")):
-            uid = int_to_base36(user.id)
-            token = make_token(user)
-            password_reset_url = "{0}://{1}{2}".format(
-                protocol,
-                current_site.domain,
-                reverse("account_password_reset_token", kwargs=dict(uidb36=uid, token=token))
-            )
-            ctx = {
-                "user": user,
-                "current_site": current_site,
-                "password_reset_url": password_reset_url,
-            }
-            hookset.send_password_reset_email([user.email], ctx)
+            helpers.send_email(user, constants.PASSWORD_RESET_CODE_OR_LINK, self.request)
+
+
+class ResendPasswordResetVerificationCodeOrEmail(APIView):
+    permission_classes = (AllowAny, )
+    throttle_classes = (AnonRateThrottle, )
+
+    def post(self, request, format=None):
+        serializer = serializers.PasswordResetVerificationCodeSerializer(data=request.data)
+        if serializer.is_valid():
+            user = self.request.user
+            if not helpers.is_user_active(user):
+                return Response({'success': True,
+                                 'message': settings.ACCOUNTS_RESEND_CODE_SUCCESS_MESSAGE,
+                                 'active_user': user.is_active
+                                 })
+            return Response({'success': True, 'message': settings.ACCOUNTS_ACTIVE_USER_MESSAGE})
+        return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class ResetPasswordAPIView(APIView):
+    throttle_classes = (AnonRateThrottle,)
+    permission_classes = (AllowAny,)
+    http_method_names = ['post', ]
+
+    def post(self, request, format=None):
+        serializer = serializers.PasswordResetSerializer(data=request.data)
+        if serializer.is_valid():
+            try:
+                code = models.EmailSMSCode.objects.get(
+                    verification_code=serializer.data.get('code', None),
+                    is_used=False,
+                    is_expired=False,
+                    action=constants.PASSWORD_RESET_CODE_OR_LINK
+                )
+                user = code.user
+                user.set_password(serializer.data.get('new_password', None))
+                user.save()
+
+                code.is_used = True
+                code.save()
+                return Response({'success': True, 'message': settings.ACCOUNTS_PASSWORD_RESET_SUCCESS_MESSAGE},
+                                status=status.HTTP_200_OK)
+            except:
+                return Response({'success': False, 'message': settings.ACCOUNTS_INVALID_CODE_MESSAGE}, status=status.HTTP_400_BAD_REQUEST)
+        return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
+
+
+class VerifyCodeAPIView(APIView):
+    permission_classes = (AllowAny, )
+    AnonRateThrottle = (AnonRateThrottle, )
+
+    # def post(self, request, format=None):
 
 
 class SocialAuthAPIView(CreateAPIView):
@@ -196,7 +246,7 @@ class SocialAuthAPIView(CreateAPIView):
 
             # Set instance since we are not calling `serializer.save()`
             serializer.instance = user
-            return get_user_serializer_response(user, accounts_settings.INACTIVE_USER_MESSAGE)
+            return helpers.get_user_serializer_response(user, settings.ACCOUNTS_INACTIVE_USER_MESSAGE)
         else:
             return Response({"errors": "Error with social authentication", 'success': False},
                             status=status.HTTP_400_BAD_REQUEST)

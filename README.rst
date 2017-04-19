@@ -1,5 +1,5 @@
 =====
-Polls
+Django Accounts
 =====
 
 Django Accounts is a simple Django app to conduct Web-based and API-based auth.
