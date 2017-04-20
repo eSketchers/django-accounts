@@ -244,7 +244,7 @@ class SocialAuthAPIView(CreateAPIView):
             # social.refersh_token(strategy)
             return Response({"errors": "Invalid access token", 'success': False},
                             status=status.HTTP_400_BAD_REQUEST)
-        if user and user.is_active:
+        if user:
             # if the access token was set to an empty string, then save the access token
             # from the request
             auth_created = user.social_auth.get(provider=provider)
