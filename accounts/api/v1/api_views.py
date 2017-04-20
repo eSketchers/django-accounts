@@ -22,8 +22,6 @@ User = get_user_model()
 class LoginAPIView(APIView):
     permission_classes = (AllowAny,)
     throttle_classes = (AnonRateThrottle,)
-    default_error_message = settings.ACCOUNTS_INVALID_LOGIN_MESSAGE
-    inactive_user_message = settings.ACCOUNTS_INACTIVE_USER_MESSAGE
     response_serializer = serializers.UserSerializer
     http_method_names = ['post', ]
     user = None
@@ -31,18 +29,16 @@ class LoginAPIView(APIView):
     def post(self, request, format=None):
         serializer = serializers.LoginSerializer(data=request.data)
         if serializer.is_valid():
-            self.user= authenticate(**serializer.data)
+            self.user = authenticate(**serializer.data)
             if self.user is None:
-                return Response({'errors': {}, 'message': self.default_error_message, 'success': False},
+                return Response({'errors': {}, 'message': settings.ACCOUNTS_INVALID_LOGIN_MESSAGE, 'success': False},
                                 status=status.HTTP_200_OK)
             else:
                 return self.response()
         return Response({'success': False, 'errors': serializer.errors, 'message': ''}, status=status.HTTP_400_BAD_REQUEST)
 
     def response(self):
-        return helpers.get_user_serializer_response(login_user=self.user,
-                                                    message=self.inactive_user_message,
-                                                    response_serializer=self.response_serializer)
+        return helpers.get_user_serializer_response(self, message=settings.ACCOUNTS_INACTIVE_USER_MESSAGE)
 
 
 class SignupAPIView(CreateAPIView):
@@ -86,10 +82,9 @@ class SignupAPIView(CreateAPIView):
         return self.response()
 
     def response(self):
-        return helpers.get_user_serializer_response(login_user=self.user,
+        return helpers.get_user_serializer_response(self,
                                                     message=settings.ACCOUNTS_ACTIVE_USER_MESSAGE,
-                                                    is_new=True,
-                                                    response_serializer=self.response_serializer)
+                                                    is_new=True)
 
 
 class ChangePasswordAPIView(APIView):
@@ -270,6 +265,4 @@ class SocialAuthAPIView(CreateAPIView):
                             status=status.HTTP_400_BAD_REQUEST)
 
     def response(self):
-        return helpers.get_user_serializer_response(login_user=self.user,
-                                                    message=settings.ACCOUNTS_ACTIVE_USER_MESSAGE,
-                                                    response_serializer=self.response_serializer)
+        return helpers.get_user_serializer_response(self, message=settings.ACCOUNTS_ACTIVE_USER_MESSAGE)
