@@ -26,17 +26,23 @@ class LoginAPIView(APIView):
     inactive_user_message = settings.ACCOUNTS_INACTIVE_USER_MESSAGE
     response_serializer = serializers.UserSerializer
     http_method_names = ['post', ]
+    user = None
 
     def post(self, request, format=None):
         serializer = serializers.LoginSerializer(data=request.data)
         if serializer.is_valid():
-            login_user = authenticate(**serializer.data)
-            if login_user is None:
+            self.user= authenticate(**serializer.data)
+            if self.user is None:
                 return Response({'errors': {}, 'message': self.default_error_message, 'success': False},
                                 status=status.HTTP_200_OK)
             else:
-                return helpers.get_user_serializer_response(login_user=login_user, message=self.inactive_user_message, response_serializer=self.response_serializer)
+                return self.response()
         return Response({'success': False, 'errors': serializer.errors, 'message': ''}, status=status.HTTP_400_BAD_REQUEST)
+
+    def response(self):
+        return helpers.get_user_serializer_response(login_user=self.user,
+                                                    message=self.inactive_user_message,
+                                                    response_serializer=self.response_serializer)
 
 
 class SignupAPIView(CreateAPIView):
@@ -46,6 +52,7 @@ class SignupAPIView(CreateAPIView):
     response_serializer = serializers.UserSerializer
     http_method_names = ['post', ]
     model = User
+    user = None
 
     def create(self, request, *args, **kwargs):
         serializer = self.get_serializer(data=request.data)
@@ -57,11 +64,11 @@ class SignupAPIView(CreateAPIView):
         if serializer.validated_data.has_key('password_confirm'):
             del serializer.validated_data['password_confirm']
         super(SignupAPIView, self).perform_create(serializer)
-        self.created_user = serializer.instance
+        self.user = serializer.instance
         return self.after_create(serializer)
 
     def after_create(self, serializer):
-        if self.created_user:
+        if self.user:
             user = serializer.instance
             user.set_password(serializer.validated_data.get('password'))
             if settings.ACCOUNT_EMAIL_CONFIRMATION_REQUIRED:
@@ -76,7 +83,13 @@ class SignupAPIView(CreateAPIView):
             else:
                 user.is_active = True
             user.save()
-        return helpers.get_user_serializer_response(login_user=user, message=settings.ACCOUNTS_ACTIVE_USER_MESSAGE, is_new=True, response_serializer=self.response_serializer)
+        return self.response()
+
+    def response(self):
+        return helpers.get_user_serializer_response(login_user=self.user,
+                                                    message=settings.ACCOUNTS_ACTIVE_USER_MESSAGE,
+                                                    is_new=True,
+                                                    response_serializer=self.response_serializer)
 
 
 class ChangePasswordAPIView(APIView):
@@ -185,6 +198,7 @@ class SocialAuthAPIView(CreateAPIView):
     throttle_classes = (AnonRateThrottle, )
     http_method_names = ['post', ]
     model = User
+    user = None
 
     def create(self, request, *args, **kwargs):
         """
@@ -249,7 +263,13 @@ class SocialAuthAPIView(CreateAPIView):
 
             # Set instance since we are not calling `serializer.save()`
             serializer.instance = user
-            return helpers.get_user_serializer_response(login_user=user, message=settings.ACCOUNTS_INACTIVE_USER_MESSAGE, response_serializer=self.response_serializer)
+            self.user = user
+            return self.response()
         else:
             return Response({"errors": "Error with social authentication", 'success': False},
                             status=status.HTTP_400_BAD_REQUEST)
+
+    def response(self):
+        return helpers.get_user_serializer_response(login_user=self.user,
+                                                    message=settings.ACCOUNTS_ACTIVE_USER_MESSAGE,
+                                                    response_serializer=self.response_serializer)
