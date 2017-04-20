@@ -240,8 +240,8 @@ class SocialAuthAPIView(CreateAPIView):
             return Response({"errors": "That social media account is already in use"},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            social = authed_user.social_auth.filter(provider=provider)[0]
-            social.refersh_token(strategy)
+            # social = authed_user.social_auth.filter(provider=provider)[0]
+            # social.refersh_token(strategy)
             return Response({"errors": "Invalid access token", 'success': False},
                             status=status.HTTP_400_BAD_REQUEST)
         if user and user.is_active:

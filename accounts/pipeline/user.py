@@ -11,7 +11,7 @@ def create_user(strategy, details, backend, user=None, *args, **kwargs):
             fields['email'] = fields['username'] + '@' + backend.name + '.com'
     if not fields:
         return
-
+    fields['is_active'] = True
     return {
         'is_new': True,
         'user': strategy.create_user(**fields)
