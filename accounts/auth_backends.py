@@ -6,7 +6,7 @@ class EmailUserNameAuthenticationBackend(ModelBackend):
 
     def authenticate(self, username=None, password=None, **kwargs):
         backend = EmailAuthenticationBackend()
-        user = backend.authenticate(email=username, password=password)
+        user = backend.authenticate(username=username, password=password)
         if not user:
             backend = UsernameAuthenticationBackend()
             user = backend.authenticate(username=username, password=password)
