@@ -26,7 +26,7 @@ class SignupView(BaseSignupView):
 
     def get(self, *args, **kwargs):
         if self.request.user.is_authenticated():
-            return redirect(default_redirect(self.request, settings.ACCOUNTS_LOGIN_REDIRECT_URL))
+            return redirect(default_redirect(self.request, settings.ACCOUNT_LOGIN_REDIRECT_URL))
         if not self.is_open():
             return self.closed()
         return super(SignupView, self).get(*args, **kwargs)
@@ -35,7 +35,7 @@ class SignupView(BaseSignupView):
         super(SignupView, self).after_signup(form)
         self.created_user.first_name = form.cleaned_data.get('first_name', None)
         self.created_user.last_name = form.cleaned_data.get('last_name', None)
-        if not settings.ACCOUNTS_EMAIL_CONFIRMATION_REQUIRED:
+        if not settings.ACCOUNT_EMAIL_CONFIRMATION_REQUIRED:
             self.created_user.is_active = True
         self.created_user.save()
 
