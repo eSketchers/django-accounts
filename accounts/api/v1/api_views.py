@@ -240,7 +240,6 @@ class SocialAuthAPIView(CreateAPIView):
             return Response({"errors": "That social media account is already in use"},
                             status=status.HTTP_400_BAD_REQUEST)
         except Exception as e:
-            print e
             # social = authed_user.social_auth.filter(provider=provider)[0]
             # social.refersh_token(strategy)
             return Response({"errors": "Invalid access token", 'success': False},
@@ -258,8 +257,8 @@ class SocialAuthAPIView(CreateAPIView):
                 auth_created.save()
 
             # Set instance since we are not calling `serializer.save()`
-            serializer.instance = user
-            self.user = user
+            serializer.instance = User.objects.get(pk=user.pk)
+            self.user = serializer.instance
             return self.response()
         else:
             return Response({"errors": "Error with social authentication", 'success': False},
