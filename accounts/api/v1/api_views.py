@@ -242,7 +242,7 @@ class SocialAuthAPIView(CreateAPIView):
         except Exception as e:
             # social = authed_user.social_auth.filter(provider=provider)[0]
             # social.refersh_token(strategy)
-            return Response({"errors": "Invalid access token", 'success': False},
+            return Response({"errors": e.message, 'success': False},
                             status=status.HTTP_400_BAD_REQUEST)
         if user:
             # if the access token was set to an empty string, then save the access token
