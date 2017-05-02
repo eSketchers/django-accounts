@@ -3,8 +3,6 @@ import urllib2
 from social_core.backends.facebook import FacebookOAuth2
 from social_core.pipeline.user import USER_FIELDS
 
-from django.db import models
-from django.core.files.base import ContentFile
 from django.contrib.auth import get_user_model
 
 from ..conf import settings
@@ -20,7 +18,10 @@ def create_user(strategy, details, backend, user=None, *args, **kwargs):
     fields = dict((name, kwargs.get(name, details.get(name)))
                   for name in backend.setting('USER_FIELDS', USER_FIELDS))
     if 'email' in fields and not fields['email']:
-        fields['email'] = ''.join(fields['username'].split()).lower() + '@' + backend.name + '.com'
+        try:
+            fields['email'] = '{0}{1}@{2}.com'.format(fields.get('first_name').lower(), fields.get('last_name').lower(), backend.name)
+        except:
+            pass
     if not fields:
         return
     fields['is_active'] = True
