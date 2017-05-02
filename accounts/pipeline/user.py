@@ -1,5 +1,7 @@
+import os
 import urllib2
 
+import errno
 from social_core.backends.facebook import FacebookOAuth2
 from social_core.pipeline.user import USER_FIELDS
 
@@ -40,6 +42,13 @@ def save_profile_picture(backend, user=None, is_new=False, *args, **kwargs):
                 picture = urllib2.urlopen(url).read()
                 uploaded_folder = file_upload_to(user, None) + '.png'
                 picture_path = '{0}/{1}'.format(settings.MEDIA_ROOT, uploaded_folder)
+                if not os.path.exists(os.path.dirname(picture_path)):
+                    try:
+                        os.makedirs(os.path.dirname(picture_path))
+                    except OSError as exc:  # Guard against race condition
+                        if exc.errno != errno.EEXIST:
+                            raise
+
                 fh = open(picture_path, 'wb')
                 fh.write(picture)
                 fh.close()
