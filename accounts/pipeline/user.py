@@ -20,8 +20,7 @@ def create_user(strategy, details, backend, user=None, *args, **kwargs):
     fields = dict((name, kwargs.get(name, details.get(name)))
                   for name in backend.setting('USER_FIELDS', USER_FIELDS))
     if 'email' in fields and not fields['email']:
-        fields['username'] = ''.join(fields['username'].split()).lower()
-        fields['email'] = fields['username'] + '@' + backend.name + '.com'
+        fields['email'] = ''.join(fields['username'].split()).lower() + '@' + backend.name + '.com'
     if not fields:
         return
     fields['is_active'] = True
