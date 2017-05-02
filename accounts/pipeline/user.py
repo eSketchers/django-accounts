@@ -51,4 +51,4 @@ def save_profile_picture(backend, user=None, is_new=False, *args, **kwargs):
                 'user': user
             }
         except:
-            raise
+            raise ValueError('Invalid Configurations')
