@@ -14,7 +14,7 @@ class AccountsAppConf(AppConf):
     EMAIL_CONFIRMATION_URL = "confirm-email"
     USE_LINK_IN_EMAILS = True
     USE_CODE_IN_EMAILS = False
-
+    USER_PROFILE_IMAGE_FIELD_NAME = None
     # Default Messages
 
     INACTIVE_USER_MESSAGE = _('Your account is not active. Please contact administrator or verify your account.')
