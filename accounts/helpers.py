@@ -90,10 +90,11 @@ def send_email(user, action, request):
 
 def get_password_reset_link(ctx):
     protocol = getattr(settings, "DEFAULT_HTTP_PROTOCOL", "http")
-    return "{0}://{1}{2}".format(
+    return "{0}://{1}{2}?code={3}".format(
         protocol,
         ctx['current_site'].domain,
-        reverse('password-reset', kwargs=dict(uidb36=int_to_base36(ctx['user'].id), token=utils.make_token(ctx['user'])))
+        settings.ACCOUNTS_PASSWORD_RESET_URL,
+        ctx.get('code', '')
     )
 
 

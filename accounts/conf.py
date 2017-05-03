@@ -15,6 +15,7 @@ class AccountsAppConf(AppConf):
     USE_LINK_IN_EMAILS = True
     USE_CODE_IN_EMAILS = False
     USER_PROFILE_IMAGE_FIELD_NAME = None
+    PASSWORD_RESET_URL = 'reset-password'
     # Default Messages
 
     INACTIVE_USER_MESSAGE = _('Your account is not active. Please contact administrator or verify your account.')
