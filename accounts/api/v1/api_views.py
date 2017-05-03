@@ -120,18 +120,26 @@ class ForgotPasswordAPIView(APIView):
     def post(self, request, format=None):
         serializer = serializers.ForgotPasswordSerializer(data=request.data)
         if serializer.is_valid():
-            self.send_email(serializer.data["email"])
-            return Response({'success': True,
-                             'message': settings.ACCOUNTS_PASSWORD_RESET_EMAIL_SENT_MESSAGE,
-                             'code_verification_enabled': settings.ACCOUNTS_USE_CODE_IN_EMAILS,
-                             },
-                            status=status.HTTP_200_OK)
+            if self.send_email(serializer.data["email"]):
+                return Response({'success': True,
+                                 'message': settings.ACCOUNTS_PASSWORD_RESET_EMAIL_SENT_MESSAGE,
+                                 'code_verification_enabled': settings.ACCOUNTS_USE_CODE_IN_EMAILS,
+                                 },
+                                status=status.HTTP_200_OK)
+            else:
+                return Response({'success': False,
+                                 'message': 'User with this email does not exist. Please try another email.',
+                                 },
+                                status=status.HTTP_400_BAD_REQUEST)
         return Response({'success': False, 'errors': serializer.errors}, status=status.HTTP_400_BAD_REQUEST)
 
     def send_email(self, email):
+        email_sent = False
         email_qs = EmailAddress.objects.filter(email__iexact=email)
         for user in User.objects.filter(pk__in=email_qs.values("user")):
             helpers.send_email(user, constants.PASSWORD_RESET_CODE_OR_LINK, self.request)
+            email_sent = True
+        return email_sent
 
 
 class ResendPasswordResetVerificationCodeOrEmail(APIView):
