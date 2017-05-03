@@ -54,11 +54,10 @@ def save_profile_picture(backend, user=None, is_new=False, *args, **kwargs):
                 fh.close()
                 data = {settings.ACCOUNTS_USER_PROFILE_IMAGE_FIELD_NAME: uploaded_folder}
         try:
-            update_user = User.objects.filter(pk=user.pk)
-            update_user.update(**data)
+            User.objects.filter(pk=user.pk).update(**data)
             return {
                 'is_new': True,
-                'user': update_user[0]
+                'user': user
             }
         except:
             raise ValueError('Invalid Configurations')
